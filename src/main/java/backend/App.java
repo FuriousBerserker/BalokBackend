@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.List;
 import java.util.ArrayList;
+import tools.balok.MemoryAccess;
 
 public class App {
     
@@ -21,19 +22,20 @@ public class App {
             System.exit(0);
         }
         String logFile = args[0];
-        List<MemoryAccess> accesses = new ArrayList<>();
+        ArrayList<MemoryAccess> accesses = new ArrayList<>();
         try {
             ObjectInputStream input = new ObjectInputStream(new FileInputStream(logFile));
-            while (input.available() > 0) {
-                MemoryAccess access = (MemoryAccess) input.readObject();
-                accesses.add(access);
-            }
+            accesses = (ArrayList<MemoryAccess>) input.readObject();
             input.close();
         } catch (IOException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
+        System.out.println("Number of memory accesses: " + accesses.size());
+        //for (MemoryAccess access: accesses) {
+            //System.out.println(access.getAddress() + " " + access.getFile() + " " + access.getLine());
+        //}
         MemoryAccessAnalyzer analyzer = new MemoryAccessAnalyzer(accesses);
         analyzer.doRaceDetection();
     }

@@ -7,6 +7,7 @@ import balok.causality.async.DataRacePolicy;
 import balok.causality.AccessMode;
 import com.carrotsearch.hppc.IntObjectHashMap;
 import java.util.List;
+import tools.balok.MemoryAccess;
 
 public class MemoryAccessAnalyzer {
     private ShadowMemory<Epoch> history;

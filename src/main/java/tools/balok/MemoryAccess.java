@@ -1,4 +1,4 @@
-package backend;
+package tools.balok;
 
 import balok.causality.AccessMode;
 import balok.causality.Event;
@@ -18,6 +18,8 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 public class MemoryAccess implements Serializable {
+
+    private static final long serialVersionUID = 4L;
 
     private AccessMode mode;
 
