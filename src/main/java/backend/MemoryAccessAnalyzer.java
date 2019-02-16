@@ -4,9 +4,12 @@ import balok.causality.Epoch;
 import balok.causality.async.AsyncLocationTracker;
 import balok.causality.async.ShadowMemory;
 import balok.causality.async.DataRacePolicy;
+import balok.causality.async.Frame;
+import balok.causality.async.FrameBuilder;
 import balok.causality.AccessMode;
 import com.carrotsearch.hppc.IntObjectHashMap;
 import java.util.List;
+import java.util.LinkedList;
 import tools.balok.MemoryAccess;
 
 public class MemoryAccessAnalyzer {
@@ -23,6 +26,8 @@ public class MemoryAccessAnalyzer {
     }
 
     public void doRaceDetection() {
+        FrameBuilder<Epoch> currentFrame = new FrameBuilder<>(512);
+        LinkedList<Frame> queue = new LinkedList<>();
         for (MemoryAccess access : accesses) {
             AsyncLocationTracker<Epoch> loc = index.getOrDefault(access.getAddress(), null);
             if (loc == null) {
@@ -38,7 +43,21 @@ public class MemoryAccessAnalyzer {
                 });
                 index.put(access.getAddress(), loc);
             }
-            history.add(loc, access.getMode(), access.getVC(), access.getTicket());
+
+            //history.add(loc, access.getMode(), access.getVC(), access.getTicket());
+            
+            // mimic local merge
+            if (!loc.tryAdd(access.getMode(), access.getVC(), access.getTicket())) {
+                currentFrame.add(loc, access.getMode(), access.getVC(), access.getTicket());
+                if (currentFrame.isFull()) {
+                    queue.add(currentFrame.build());
+                }
+            }
+
+            // mimic interval merge
+            for (Frame<Epoch> frame : queue) {
+                frame.addTo(history);
+            }
         }
     }
 }
