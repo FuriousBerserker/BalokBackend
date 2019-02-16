@@ -6,6 +6,7 @@ package backend;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.EOFException;
 import java.util.List;
 import java.util.ArrayList;
 import tools.balok.MemoryAccess;
@@ -25,7 +26,15 @@ public class App {
         ArrayList<MemoryAccess> accesses = new ArrayList<>();
         try {
             ObjectInputStream input = new ObjectInputStream(new FileInputStream(logFile));
-            accesses = (ArrayList<MemoryAccess>) input.readObject();
+            MemoryAccess access = null;
+            while (true) {
+                try {
+                    access = (MemoryAccess)input.readObject();
+                } catch(EOFException e) {
+                    break;
+                }
+                accesses.add(access);
+            }
             input.close();
         } catch (IOException e) {
             e.printStackTrace();
