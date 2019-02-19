@@ -34,6 +34,7 @@ dependencies {
     compile "t.cog.balok:balok:1.0-dev"
     compile "com.carrotsearch:hppc:0.7.2"
     compile group: 'org.jctools', name: 'jctools-core', version: '2.1.1'
+    compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.24.0'
 
     // This dependency is found on compile classpath of this component and consumers.
     implementation 'com.google.guava:guava:26.0-jre'

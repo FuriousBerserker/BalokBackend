@@ -4,12 +4,16 @@
 package backend;
 
 import java.io.FileInputStream;
+import java.util.zip.GZIPInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.EOFException;
 import java.util.List;
 import java.util.ArrayList;
 import tools.balok.MemoryAccess;
+import tools.balok.MemoryAccessSerializer;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 
 public class App {
     
@@ -24,21 +28,18 @@ public class App {
         }
         String logFile = args[0];
         ArrayList<MemoryAccess> accesses = new ArrayList<>();
+        Kryo kryo = new Kryo();
+        kryo.setReferences(false);
+        kryo.register(MemoryAccess.class, new MemoryAccessSerializer());
         try {
-            ObjectInputStream input = new ObjectInputStream(new FileInputStream(logFile));
+            Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
             MemoryAccess access = null;
-            while (true) {
-                try {
-                    access = (MemoryAccess)input.readObject();
-                } catch(EOFException e) {
-                    break;
-                }
+            while (!input.eof()) {
+                access = kryo.readObject(input, MemoryAccess.class);
                 accesses.add(access);
             }
             input.close();
         } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
         System.out.println("Number of memory accesses: " + accesses.size());
