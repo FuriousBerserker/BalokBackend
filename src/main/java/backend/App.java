@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.ArrayList;
 import tools.balok.MemoryAccess;
 import tools.balok.MemoryAccessSerializer;
+import tools.balok.FrameSerializer;
+import balok.ser.SerializedFrame;
+import balok.causality.Epoch;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -27,7 +30,9 @@ public class App {
             System.exit(0);
         }
         String logFile = args[0];
-        ArrayList<MemoryAccess> accesses = new ArrayList<>();
+
+        // code that handle MemoryAccess objects
+        /* ArrayList<MemoryAccess> accesses = new ArrayList<>();
         Kryo kryo = new Kryo();
         kryo.setReferences(false);
         kryo.register(MemoryAccess.class, new MemoryAccessSerializer());
@@ -47,6 +52,27 @@ public class App {
             //System.out.println(access.getAddress() + " " + access.getFile() + " " + access.getLine());
         //}
         MemoryAccessAnalyzer analyzer = new MemoryAccessAnalyzer(accesses);
-        analyzer.doRaceDetection();
+        analyzer.doRaceDetection(); */
+
+        Kryo kryo = new Kryo();
+        kryo.setReferences(false);
+        kryo.setRegistrationRequired(true);
+        kryo.register(SerializedFrame.class, new FrameSerializer());
+        long accessNum = 0;
+        FrameAnalyzer analyzer = new FrameAnalyzer();
+        try {
+            Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
+            SerializedFrame<Epoch> frame = null;
+            while (!input.eof()) {
+                frame = kryo.readObject(input, SerializedFrame.class);
+                accessNum += frame.size();
+                analyzer.addFrame(frame);
+            }
+            input.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Number of memory accesses: " + accessNum);
+
     }
 }
