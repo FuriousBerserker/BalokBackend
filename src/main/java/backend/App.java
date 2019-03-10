@@ -17,6 +17,13 @@ import balok.causality.Epoch;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
 
 public class App {
     
@@ -25,11 +32,22 @@ public class App {
     }
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("java App <log file>");
-            System.exit(0);
+        CommandLineParser parser = new DefaultParser();
+        Options options = new Options();
+        Option silent = new Option("s", false, "do not carry out race detection");
+        Option time = new Option("t", false, "measure execution time");
+        options.addOption(silent);
+        options.addOption(time);
+        CommandLine line = null;
+        HelpFormatter help = new HelpFormatter();
+        try {
+            line = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            help.printHelp("java App", options, true);
+            System.exit(1);
         }
-        String logFile = args[0];
+
 
         // code that handle MemoryAccess objects
         /* ArrayList<MemoryAccess> accesses = new ArrayList<>();
@@ -53,26 +71,41 @@ public class App {
         //}
         MemoryAccessAnalyzer analyzer = new MemoryAccessAnalyzer(accesses);
         analyzer.doRaceDetection(); */
-
+        long start = 0l;
+        if (line.hasOption(time.getOpt())) {
+            start = System.currentTimeMillis();
+        }
         Kryo kryo = new Kryo();
         kryo.setReferences(false);
         kryo.setRegistrationRequired(true);
         kryo.register(SerializedFrame.class, new FrameSerializer());
         long accessNum = 0;
         FrameAnalyzer analyzer = new FrameAnalyzer();
+        if (line.getArgs().length == 0) {
+            System.out.println("Please input log file");
+            help.printHelp("java App", options, true);
+            System.exit(1);
+        }
+        String logFile = line.getArgs()[0];
         try {
             Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
             SerializedFrame<Epoch> frame = null;
             while (!input.eof()) {
                 frame = kryo.readObject(input, SerializedFrame.class);
                 accessNum += frame.size();
-                analyzer.addFrame(frame);
+                if (!line.hasOption(silent.getOpt())) {
+                    analyzer.addFrame(frame);
+                }
             }
             input.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        long elapsedTime = 0l;
+        if (line.hasOption(time.getOpt())) {
+            elapsedTime = System.currentTimeMillis() - start;
+            System.out.println("Elapsed Time: " + elapsedTime + " ms");
+        }
         System.out.println("Number of memory accesses: " + accessNum);
-
     }
 }
