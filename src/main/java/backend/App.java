@@ -36,8 +36,10 @@ public class App {
         Options options = new Options();
         Option silent = new Option("s", false, "do not carry out race detection");
         Option time = new Option("t", false, "measure execution time");
+        Option localMerge = new Option("m", false, "enable local merging optimization");
         options.addOption(silent);
         options.addOption(time);
+        options.addOption(localMerge);
         CommandLine line = null;
         HelpFormatter help = new HelpFormatter();
         try {
@@ -90,10 +92,21 @@ public class App {
         try {
             Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
             SerializedFrame<Epoch> frame = null;
-            while (!input.eof()) {
-                frame = kryo.readObject(input, SerializedFrame.class);
-                accessNum += frame.size();
-                if (!line.hasOption(silent.getOpt())) {
+            if (line.hasOption(silent.getOpt())) {
+                while (!input.eof()) {
+                    frame = kryo.readObject(input, SerializedFrame.class);
+                    accessNum += frame.size();
+                }
+            } else if (line.hasOption(localMerge.getOpt())) {
+                while (!input.eof()) {
+                    frame = kryo.readObject(input, SerializedFrame.class);
+                    accessNum += frame.size();
+                    analyzer.addFrameWithLocalMerge(frame);
+                }
+            } else {
+                while (!input.eof()) {
+                    frame = kryo.readObject(input, SerializedFrame.class);
+                    accessNum += frame.size();
                     analyzer.addFrame(frame);
                 }
             }
