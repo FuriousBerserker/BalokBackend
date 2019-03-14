@@ -17,3 +17,5 @@ lib/
 /.settings/org.eclipse.buildship.core.prefs
 *.swp
 input/
+*.png
+*.pdf
