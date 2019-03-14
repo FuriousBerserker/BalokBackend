@@ -19,6 +19,7 @@ plugins {
 version = "1.0-dev"
 group = "t.cog.balok"
 description = "A tiny balok backend to tackle dumped memory accesses"
+applicationDefaultJvmArgs = ["-Xms4g", "-Xmx8g", "-Xss1m"]
 
 repositories {
     // Use jcenter for resolving your dependencies.
@@ -36,6 +37,7 @@ dependencies {
     compile group: 'org.jctools', name: 'jctools-core', version: '2.1.1'
     compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.24.0'
     compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
+    compile group: 'org.knowm.xchart', name: 'xchart', version: '3.5.4'
 
     // This dependency is found on compile classpath of this component and consumers.
     implementation 'com.google.guava:guava:26.0-jre'

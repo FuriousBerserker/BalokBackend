@@ -4,11 +4,68 @@
 package backend;
 
 import org.junit.Test;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
 import static org.junit.Assert.*;
 
 public class AppTest {
     @Test public void testAppHasAGreeting() {
         App classUnderTest = new App();
         assertNotNull("app should have a greeting", classUnderTest.getGreeting());
+    }
+
+    @Test public void testQuickSort() {
+        Random random = new Random();
+        HashMap<Integer, Integer> dataSources = new HashMap<>();
+        int MAP_SIZE = 1000;
+        final int BOUND = 1000000;
+        final int SHUFFLE_TIMES = 100;
+        for (int i = 0; i < MAP_SIZE; i++) {
+            int key;
+            do {
+                key = random.nextInt(BOUND);
+            } while (dataSources.containsKey(key));
+            int value = i;
+            dataSources.put(key, value);
+        }
+
+        for (int tt = 0; tt < 10; tt++) {
+            int ARRAY_SIZE = MAP_SIZE - tt;
+            int[] keys = new int[ARRAY_SIZE];
+            int[] values = new int[ARRAY_SIZE];
+            int index = 0;
+            for (Map.Entry<Integer, Integer> entry : dataSources.entrySet()) {
+                keys[index] = entry.getKey();
+                values[index] = entry.getValue();
+                index++;
+                if (index == ARRAY_SIZE) {
+                    break;
+                }
+            }
+            for (int i = 0; i < SHUFFLE_TIMES; i++) {
+                int i1 = random.nextInt(ARRAY_SIZE);
+                int i2 = random.nextInt(ARRAY_SIZE);
+                int tmp = keys[i1];
+                keys[i1] = keys[i2];
+                keys[i2] = tmp;
+                tmp = values[i1];
+                values[i1] = values[i2];
+                values[i2] = tmp;
+            }
+
+            List<Integer> keyList = Arrays.stream(keys).boxed().collect(Collectors.toList());
+            List<Integer> valueList = Arrays.stream(values).boxed().collect(Collectors.toList());
+
+            Statistics ss = new Statistics(null);
+            ss.quickSort(keyList, valueList, 0, ARRAY_SIZE, random, Comparators.intComparator);
+
+            //check
+            for (int i = 1; i < ARRAY_SIZE; i++) {
+                assertTrue(keyList.get(i) > keyList.get(i - 1));
+                assertEquals(valueList.get(i), dataSources.get(keyList.get(i)));
+            }
+        }
     }
 }

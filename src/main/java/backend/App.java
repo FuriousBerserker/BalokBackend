@@ -3,6 +3,7 @@
  */
 package backend;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.util.zip.GZIPInputStream;
 import java.io.IOException;
@@ -37,9 +38,13 @@ public class App {
         Option silent = new Option("s", false, "do not carry out race detection");
         Option time = new Option("t", false, "measure execution time");
         Option localMerge = new Option("m", false, "enable local merging optimization");
+        Option statistics = new Option("c", false, "show statistics of the log file");
+        Option parallel = new Option("p", false, "enable parallel data race detection");
         options.addOption(silent);
         options.addOption(time);
         options.addOption(localMerge);
+        options.addOption(statistics);
+        options.addOption(parallel);
         CommandLine line = null;
         HelpFormatter help = new HelpFormatter();
         try {
@@ -82,7 +87,6 @@ public class App {
         kryo.setRegistrationRequired(true);
         kryo.register(SerializedFrame.class, new FrameSerializer());
         long accessNum = 0;
-        FrameAnalyzer analyzer = new FrameAnalyzer();
         if (line.getArgs().length == 0) {
             System.out.println("Please input log file");
             help.printHelp("java App", options, true);
@@ -91,19 +95,38 @@ public class App {
         String logFile = line.getArgs()[0];
         try {
             Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
+            String benchmarkName = logFile.substring(logFile.lastIndexOf(File.separator) + 1, logFile.lastIndexOf('.'));
             SerializedFrame<Epoch> frame = null;
-            if (line.hasOption(silent.getOpt())) {
+            if (line.hasOption(statistics.getOpt())) {
+                Statistics ss = new Statistics(benchmarkName);
+                while (!input.eof()) {
+                    frame = kryo.readObject(input, SerializedFrame.class);
+                    accessNum += frame.size();
+                    ss.addFrame(frame);
+                }
+                ss.generateFigure();
+            } else if (line.hasOption(silent.getOpt())) {
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
                     accessNum += frame.size();
                 }
             } else if (line.hasOption(localMerge.getOpt())) {
+                FrameAnalyzer analyzer = new FrameAnalyzer();
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
                     accessNum += frame.size();
                     analyzer.addFrameWithLocalMerge(frame);
                 }
+            } else if (line.hasOption(parallel.getOpt())) {
+                ParallelFrameAnalyzer analyzer = new ParallelFrameAnalyzer();
+                while (!input.eof()) {
+                    frame = kryo.readObject(input, SerializedFrame.class);
+                    accessNum += frame.size();
+                    analyzer.addFrame(frame);
+                }
+                analyzer.close();
             } else {
+                FrameAnalyzer analyzer = new FrameAnalyzer();
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
                     accessNum += frame.size();
