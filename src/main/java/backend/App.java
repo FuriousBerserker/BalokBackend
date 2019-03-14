@@ -118,7 +118,7 @@ public class App {
                     analyzer.addFrameWithLocalMerge(frame);
                 }
             } else if (line.hasOption(parallel.getOpt())) {
-                ParallelFrameAnalyzer analyzer = new ParallelFrameAnalyzer();
+                ParallelFrameAnalyzer analyzer = new ParallelFrameAnalyzer(8);
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
                     accessNum += frame.size();
