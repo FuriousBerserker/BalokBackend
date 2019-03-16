@@ -3,6 +3,7 @@ package backend;
 import balok.ser.SerializedFrame;
 import balok.causality.Epoch;
 import balok.causality.Event;
+import balok.causality.async.SparseShadowEntry;
 import balok.causality.async.AsyncLocationTracker;
 import balok.causality.async.ShadowMemory;
 import balok.causality.async.DataRacePolicy;
@@ -19,7 +20,7 @@ public class FrameAnalyzer {
     private HashMap<Integer, AsyncLocationTracker<Epoch>> index;
 
     public FrameAnalyzer() {
-        this.history = new ShadowMemory<>();
+        this.history = new ShadowMemory<>(SparseShadowEntry::new);
         this.index = new HashMap<>();
     }
 

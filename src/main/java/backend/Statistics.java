@@ -97,20 +97,20 @@ public class Statistics {
             if (accessNum == previousAccessNum) {
                 previousAddressNum++;
             } else {
-                if (previousAccessNum < THRESHOLD) {
+                if (previousAccessNum > THRESHOLD) {
                     accessNumList.add(previousAccessNum);
                     addressNumList.add(previousAddressNum);
                     System.out.println("accessNum: " + previousAccessNum + ", addressNum: " + previousAddressNum);
                 }
 
-//                if (previousAccessNum <= 10) {
-//                    System.out.println("accessNum: " + previousAccessNum + ", addressNum: " + previousAddressNum);
-//                }
+                if (previousAccessNum <= 10) {
+                    System.out.println("accessNum: " + previousAccessNum + ", addressNum: " + previousAddressNum);
+                }
                 previousAccessNum = accessNum;
                 previousAddressNum = 1;
             }
         }
-        if (previousAccessNum < THRESHOLD) {
+        if (previousAccessNum > THRESHOLD) {
             accessNumList.add(previousAccessNum);
             addressNumList.add(previousAddressNum);
             System.out.println("accessNum: " + previousAccessNum + ", addressNum: " + previousAddressNum);

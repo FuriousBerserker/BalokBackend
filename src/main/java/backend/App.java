@@ -39,7 +39,7 @@ public class App {
         Option time = new Option("t", false, "measure execution time");
         Option localMerge = new Option("m", false, "enable local merging optimization");
         Option statistics = new Option("c", false, "show statistics of the log file");
-        Option parallel = new Option("p", false, "enable parallel data race detection");
+        Option parallel = new Option("p", true, "enable parallel data race detection");
         options.addOption(silent);
         options.addOption(time);
         options.addOption(localMerge);
@@ -111,6 +111,7 @@ public class App {
                     accessNum += frame.size();
                 }
             } else if (line.hasOption(localMerge.getOpt())) {
+                System.out.println("Sequential data race detection with local merge optimization");
                 FrameAnalyzer analyzer = new FrameAnalyzer();
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
@@ -118,7 +119,9 @@ public class App {
                     analyzer.addFrameWithLocalMerge(frame);
                 }
             } else if (line.hasOption(parallel.getOpt())) {
-                ParallelFrameAnalyzer analyzer = new ParallelFrameAnalyzer(8);
+                int parallelism = Integer.parseInt(line.getOptionValue(parallel.getOpt()));
+                System.out.println("Parallel data race detection, parallelism is " + parallelism);
+                ParallelFrameAnalyzer analyzer = new ParallelFrameAnalyzer(parallelism);
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
                     accessNum += frame.size();
@@ -126,6 +129,7 @@ public class App {
                 }
                 analyzer.close();
             } else {
+                System.out.println("Sequential data race detection");
                 FrameAnalyzer analyzer = new FrameAnalyzer();
                 while (!input.eof()) {
                     frame = kryo.readObject(input, SerializedFrame.class);
