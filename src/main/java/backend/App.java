@@ -3,11 +3,8 @@
  */
 package backend;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
 import java.util.zip.GZIPInputStream;
-import java.io.IOException;
-import java.io.EOFException;
 import java.util.List;
 import java.util.ArrayList;
 import tools.balok.MemoryAccess;
@@ -35,16 +32,19 @@ public class App {
     public static void main(String[] args) {
         CommandLineParser parser = new DefaultParser();
         Options options = new Options();
-        Option silent = new Option("s", false, "do not carry out race detection");
         Option time = new Option("t", false, "measure execution time");
-        Option localMerge = new Option("m", false, "enable local merging optimization");
+        Option silent = new Option("q", false, "do not carry out race detection");
         Option statistics = new Option("c", false, "show statistics of the log file");
         Option parallel = new Option("p", true, "enable parallel data race detection");
-        options.addOption(silent);
+        Option sequential = new Option("s", false, "enable sequential data race detection");
+        Option localMerge = new Option("m", false, "enable sequential data race detection with local merging optimization");
+
         options.addOption(time);
-        options.addOption(localMerge);
+        options.addOption(silent);
         options.addOption(statistics);
         options.addOption(parallel);
+        options.addOption(sequential);
+        options.addOption(localMerge);
         CommandLine line = null;
         HelpFormatter help = new HelpFormatter();
         try {
@@ -78,6 +78,8 @@ public class App {
         //}
         MemoryAccessAnalyzer analyzer = new MemoryAccessAnalyzer(accesses);
         analyzer.doRaceDetection(); */
+
+
         long start = 0l;
         if (line.hasOption(time.getOpt())) {
             start = System.currentTimeMillis();
@@ -92,60 +94,57 @@ public class App {
             help.printHelp("java App", options, true);
             System.exit(1);
         }
-        String logFile = line.getArgs()[0];
-        try {
-            Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
-            String benchmarkName = logFile.substring(logFile.lastIndexOf(File.separator) + 1, logFile.lastIndexOf('.'));
-            SerializedFrame<Epoch> frame = null;
-            if (line.hasOption(statistics.getOpt())) {
-                Statistics ss = new Statistics(benchmarkName);
-                while (!input.eof()) {
-                    frame = kryo.readObject(input, SerializedFrame.class);
-                    accessNum += frame.size();
-                    ss.addFrame(frame);
-                }
-                ss.generateFigure();
-            } else if (line.hasOption(silent.getOpt())) {
-                while (!input.eof()) {
-                    frame = kryo.readObject(input, SerializedFrame.class);
-                    accessNum += frame.size();
-                }
-            } else if (line.hasOption(localMerge.getOpt())) {
-                System.out.println("Sequential data race detection with local merge optimization");
-                FrameAnalyzer analyzer = new FrameAnalyzer();
-                while (!input.eof()) {
-                    frame = kryo.readObject(input, SerializedFrame.class);
-                    accessNum += frame.size();
-                    analyzer.addFrameWithLocalMerge(frame);
-                }
-            } else if (line.hasOption(parallel.getOpt())) {
-                int parallelism = Integer.parseInt(line.getOptionValue(parallel.getOpt()));
-                System.out.println("Parallel data race detection, parallelism is " + parallelism);
-                ParallelFrameAnalyzer analyzer = new ParallelFrameAnalyzer(parallelism);
-                while (!input.eof()) {
-                    frame = kryo.readObject(input, SerializedFrame.class);
-                    accessNum += frame.size();
-                    analyzer.addFrame(frame);
-                }
-                analyzer.close();
-            } else {
-                System.out.println("Sequential data race detection");
-                FrameAnalyzer analyzer = new FrameAnalyzer();
-                while (!input.eof()) {
-                    frame = kryo.readObject(input, SerializedFrame.class);
-                    accessNum += frame.size();
-                    analyzer.addFrame(frame);
-                }
+        String logFolderName = line.getArgs()[0];
+        File logFolder = new File(logFolderName);
+        String benchmarkName = logFolderName.substring(logFolderName.lastIndexOf(File.separator) + 1);
+        if (!logFolder.isDirectory()) {
+            System.out.println(logFolder.getAbsolutePath() + " needs to be a vaild path to the folder containing log files");
+            System.exit(1);
+        } else if (!logFolder.canRead()) {
+            System.out.println(logFolder.getAbsolutePath() + " needs to have read permission");
+            System.exit(1);
+        }
+
+        FilenameFilter logFileFilter = new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.trim().endsWith(".log") ? true : false;
             }
-            input.close();
+        };
+
+        ArrayList<Input> logFileInputs = new ArrayList<>();
+        try {
+            for (File logFile : logFolder.listFiles(logFileFilter)) {
+                Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
+                logFileInputs.add(input);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        if (line.hasOption(statistics.getOpt())) {
+            // statistics mode
+        } else if (line.hasOption(silent.getOpt())) {
+            // silent mode
+        } else if (line.hasOption(parallel.getOpt())) {
+            // parallel data race detection mode
+        } else if (line.hasOption(sequential.getOpt())){
+            // sequential data race detection mode
+        } else if (line.hasOption(localMerge.getOpt())) {
+            // sequential data race detection mode with optimizations
+        }
+
         long elapsedTime = 0l;
         if (line.hasOption(time.getOpt())) {
             elapsedTime = System.currentTimeMillis() - start;
             System.out.println("Elapsed Time: " + elapsedTime + " ms");
         }
         System.out.println("Number of memory accesses: " + accessNum);
+    }
+
+    private static SerializedFrame<Epoch> getNextFrame(List<Input> inputs) {
+        return null;
     }
 }
