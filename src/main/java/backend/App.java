@@ -4,8 +4,6 @@
 package backend;
 
 import java.io.*;
-import java.util.ListIterator;
-import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 import java.util.List;
 import java.util.ArrayList;
@@ -128,21 +126,8 @@ public class App {
 
         if (line.hasOption(statistics.getOpt())) {
             // statistics mode
-            Statistics ss = new Statistics(benchmarkName);
-            Optional<SerializedFrame<Epoch>> frame = getNextFrame(kryo, logFileInputs);
-            while (frame.isPresent()) {
-                ss.addFrame(frame.get());
-                accessNum += frame.get().size();
-                frame = getNextFrame(kryo, logFileInputs);
-            }
-            ss.generateFigure();
         } else if (line.hasOption(silent.getOpt())) {
             // silent mode
-            Optional<SerializedFrame<Epoch>> frame = getNextFrame(kryo, logFileInputs);
-            while (frame.isPresent()) {
-                accessNum += frame.get().size();
-                frame = getNextFrame(kryo, logFileInputs);
-            }
         } else if (line.hasOption(parallel.getOpt())) {
             // parallel data race detection mode
         } else if (line.hasOption(sequential.getOpt())){
@@ -159,18 +144,7 @@ public class App {
         System.out.println("Number of memory accesses: " + accessNum);
     }
 
-    private static Optional<SerializedFrame<Epoch>> getNextFrame(Kryo kryo, List<Input> inputs) {
-        ListIterator<Input> inputIter = inputs.listIterator();
-        while (inputIter.hasNext()) {
-            Input input = inputIter.next();
-            if (input.eof()) {
-                input.close();
-                inputIter.remove();
-            } else {
-                return Optional.of(kryo.readObject(input, SerializedFrame.class));
-            }
-        }
-        // all inputs are eof
-        return Optional.empty();
+    private static SerializedFrame<Epoch> getNextFrame(List<Input> inputs) {
+        return null;
     }
 }
