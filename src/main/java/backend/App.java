@@ -126,22 +126,26 @@ public class App {
             e.printStackTrace();
         }
 
+        FrameInput input = new FrameInput(kryo, logFileInputs);
+
         if (line.hasOption(statistics.getOpt())) {
             // statistics mode
+            System.out.println("Statistics mode, calculate the distribution of memory accesses");
             Statistics ss = new Statistics(benchmarkName);
-            Optional<SerializedFrame<Epoch>> frame = getNextFrame(kryo, logFileInputs);
+            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 ss.addFrame(frame.get());
                 accessNum += frame.get().size();
-                frame = getNextFrame(kryo, logFileInputs);
+                frame = input.getNextFrame();
             }
             ss.generateFigure();
         } else if (line.hasOption(silent.getOpt())) {
             // silent mode
-            Optional<SerializedFrame<Epoch>> frame = getNextFrame(kryo, logFileInputs);
+            System.out.println("Silent mode, does not carry out data race detection");
+            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 accessNum += frame.get().size();
-                frame = getNextFrame(kryo, logFileInputs);
+                frame = input.getNextFrame();
             }
         } else if (line.hasOption(parallel.getOpt())) {
             // parallel data race detection mode
@@ -157,20 +161,5 @@ public class App {
             System.out.println("Elapsed Time: " + elapsedTime + " ms");
         }
         System.out.println("Number of memory accesses: " + accessNum);
-    }
-
-    private static Optional<SerializedFrame<Epoch>> getNextFrame(Kryo kryo, List<Input> inputs) {
-        ListIterator<Input> inputIter = inputs.listIterator();
-        while (inputIter.hasNext()) {
-            Input input = inputIter.next();
-            if (input.eof()) {
-                input.close();
-                inputIter.remove();
-            } else {
-                return Optional.of(kryo.readObject(input, SerializedFrame.class));
-            }
-        }
-        // all inputs are eof
-        return Optional.empty();
     }
 }
