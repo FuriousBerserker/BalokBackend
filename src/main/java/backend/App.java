@@ -4,13 +4,10 @@
 package backend;
 
 import java.io.*;
-import java.util.ListIterator;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
-import java.util.List;
 import java.util.ArrayList;
-import tools.balok.MemoryAccess;
-import tools.balok.MemoryAccessSerializer;
+
 import tools.balok.FrameSerializer;
 import balok.ser.SerializedFrame;
 import balok.causality.Epoch;
@@ -151,7 +148,8 @@ public class App {
             // parallel data race detection mode
             int parallelism = Integer.parseInt(line.getOptionValue(parallel.getOpt()));
             System.out.println("Parallel mode, detect data races in parallel with " + parallelism + " threads");
-            FixedParallelFrameAnalyzer analyzer = new FixedParallelFrameAnalyzer(parallelism);
+            //FixedParallelBlockingQueueFrameAnalyzer analyzer = new FixedParallelBlockingQueueFrameAnalyzer(parallelism);
+            FixedParallelSPSCFrameAnalyzer analyzer = new FixedParallelSPSCFrameAnalyzer(parallelism);
             Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());

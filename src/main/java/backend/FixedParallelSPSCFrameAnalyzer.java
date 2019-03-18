@@ -7,19 +7,16 @@ import balok.causality.async.DataRacePolicy;
 import balok.causality.async.ShadowMemory;
 import balok.causality.async.SparseShadowEntry;
 import balok.ser.SerializedFrame;
-import it.unimi.dsi.fastutil.Hash;
-import javafx.scene.effect.Shadow;
+import org.jctools.queues.SpscLinkedQueue;
 
-import java.io.IOException;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FixedParallelFrameAnalyzer {
+public class FixedParallelSPSCFrameAnalyzer {
 
     private final int workerThreadNum;
 
-    private BlockingQueue<MemoryAccess>[] queues;
+    private SpscLinkedQueue<MemoryAccess>[] queues;
 
     private Thread[] workerThreads;
 
@@ -29,12 +26,14 @@ public class FixedParallelFrameAnalyzer {
 
     private AtomicLong tackledAccess = new AtomicLong(0L);
 
-    public FixedParallelFrameAnalyzer(int workerThreadNum) {
+    private static int MAX_POOL_TIME = 10;
+
+    public FixedParallelSPSCFrameAnalyzer(int workerThreadNum) {
         this.workerThreadNum = workerThreadNum;
-        queues = new LinkedBlockingQueue[workerThreadNum];
+        queues = new SpscLinkedQueue[workerThreadNum];
         workerThreads = new Thread[workerThreadNum];
         for (int i = 0; i < workerThreadNum; i++) {
-            queues[i] = new LinkedBlockingQueue<>();
+            queues[i] = new SpscLinkedQueue<>();
             workerThreads[i] = new Thread(new WorkerThread(i, queues[i]));
             workerThreads[i].start();
         }
@@ -72,11 +71,11 @@ public class FixedParallelFrameAnalyzer {
 
         private int tid;
 
-        private BlockingQueue<MemoryAccess> queue;
+        private SpscLinkedQueue<MemoryAccess> queue;
 
         private ShadowMemory history = new ShadowMemory(SparseShadowEntry::new);
 
-        public WorkerThread(int tid, BlockingQueue<MemoryAccess> queue) {
+        public WorkerThread(int tid, SpscLinkedQueue<MemoryAccess> queue) {
             this.tid = tid;
             this.queue = queue;
         }
@@ -87,29 +86,31 @@ public class FixedParallelFrameAnalyzer {
                 if (isNoMoreInput && queue.isEmpty()) {
                     break;
                 }
-                try {
-                    MemoryAccess access = queue.poll(1000, TimeUnit.MILLISECONDS);
+                MemoryAccess access = null;
+                for (int i = 0; i < MAX_POOL_TIME; i++) {
+                    access = queue.poll();
                     if (access != null) {
-                        int address = access.getAddress();
-                        AsyncLocationTracker<Epoch> loc = locMap.getOrDefault(address, null);
-                        if (loc == null) {
-                            loc = new AsyncLocationTracker<>((mode1, ev1, mode2, ev2) -> {
-                                // We log any data race
-                                System.out.println("Race Detected!");
-                                System.out.println("Access 1: " + mode1 + " " + ev1);
-                                System.out.println("Access 2: " + mode2 + " " + ev2);
-                                // We say to ADD in case of a write so that that access is written to the shadow
-                                // location We say to DISCARD in the case of a read so that the operation can
-                                // continue (ignoring reads) if a data-race occurs.
-                                return mode1 == AccessMode.WRITE ? DataRacePolicy.ADD : DataRacePolicy.DISCARD;
-                            });
-                            locMap.put(address, loc);
-                        }
-                        history.add(loc, access.getMode(), access.getEvent(), access.getTicket());
-                        tackledAccess.incrementAndGet();
+                        break;
                     }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                }
+                if (access != null) {
+                    int address = access.getAddress();
+                    AsyncLocationTracker<Epoch> loc = locMap.getOrDefault(address, null);
+                    if (loc == null) {
+                        loc = new AsyncLocationTracker<>((mode1, ev1, mode2, ev2) -> {
+                            // We log any data race
+                            System.out.println("Race Detected!");
+                            System.out.println("Access 1: " + mode1 + " " + ev1);
+                            System.out.println("Access 2: " + mode2 + " " + ev2);
+                            // We say to ADD in case of a write so that that access is written to the shadow
+                            // location We say to DISCARD in the case of a read so that the operation can
+                            // continue (ignoring reads) if a data-race occurs.
+                            return mode1 == AccessMode.WRITE ? DataRacePolicy.ADD : DataRacePolicy.DISCARD;
+                        });
+                        locMap.put(address, loc);
+                    }
+                    history.add(loc, access.getMode(), access.getEvent(), access.getTicket());
+                    tackledAccess.incrementAndGet();
                 }
             }
         }
