@@ -39,14 +39,14 @@ public class App {
         Option statistics = new Option("c", false, "show statistics of the log file");
         Option parallel = new Option("p", true, "enable parallel data race detection");
         Option sequential = new Option("s", false, "enable sequential data race detection");
-        Option localMerge = new Option("m", false, "enable sequential data race detection with local merging optimization");
+        //Option localMerge = new Option("m", false, "enable sequential data race detection with local merging optimization");
 
         options.addOption(time);
         options.addOption(silent);
         options.addOption(statistics);
         options.addOption(parallel);
         options.addOption(sequential);
-        options.addOption(localMerge);
+        //options.addOption(localMerge);
         CommandLine line = null;
         HelpFormatter help = new HelpFormatter();
         try {
@@ -149,10 +149,29 @@ public class App {
             }
         } else if (line.hasOption(parallel.getOpt())) {
             // parallel data race detection mode
+            int parallelism = Integer.parseInt(line.getOptionValue(parallel.getOpt()));
+            System.out.println("Parallel mode, detect data races in parallel with " + parallelism + " threads");
+            FixedParallelFrameAnalyzer analyzer = new FixedParallelFrameAnalyzer(parallelism);
+            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            while (frame.isPresent()) {
+                analyzer.addFrame(frame.get());
+                accessNum += frame.get().size();
+                frame = input.getNextFrame();
+            }
+            analyzer.noMoreInput();
+            analyzer.close();
         } else if (line.hasOption(sequential.getOpt())){
             // sequential data race detection mode
-        } else if (line.hasOption(localMerge.getOpt())) {
-            // sequential data race detection mode with optimizations
+            System.out.println("Sequential mode, detect data races sequentially");
+            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer();
+            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            while (frame.isPresent()) {
+                //analyzer.addFrame(frame.get());
+                analyzer.addFrameByMemoryAccess(frame.get());
+                accessNum += frame.get().size();
+                frame = input.getNextFrame();
+            }
+            analyzer.close();
         }
 
         long elapsedTime = 0l;
