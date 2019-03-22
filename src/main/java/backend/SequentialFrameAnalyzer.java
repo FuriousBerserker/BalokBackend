@@ -1,15 +1,13 @@
 package backend;
 
+import balok.causality.async.*;
 import balok.ser.SerializedFrame;
 import balok.causality.Epoch;
 import balok.causality.Event;
-import balok.causality.async.SparseShadowEntry;
-import balok.causality.async.AsyncLocationTracker;
-import balok.causality.async.ShadowMemory;
-import balok.causality.async.DataRacePolicy;
 import balok.causality.AccessMode;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class SequentialFrameAnalyzer {
     
@@ -63,8 +61,16 @@ public class SequentialFrameAnalyzer {
                 locMap.put(address, loc);
             }
             MemoryAccess access = new MemoryAccess(address, frame.getModes()[i], frame.getEvents()[i], frame.getTickets()[i]);
+//            if (access.getTicket() == -2147483594) {
+//                System.out.println("before");
+//                System.out.println(history.getShadowEntry(loc));
+//            }
             history.add(loc, access.getMode(), access.getEvent(), access.getTicket());
             tackledAccess++;
+//            if (access.getTicket() == -2147483594) {
+//                System.out.println("after");
+//                System.out.println(history.getShadowEntry(loc));
+//            }
         }
     }
 
@@ -98,5 +104,18 @@ public class SequentialFrameAnalyzer {
 
     public void close() {
         System.out.println("tackled memory access: " + tackledAccess);
+    }
+
+    public void sanityCheck() {
+        int errorNum = 0;
+        for (Map.Entry<Integer, AsyncLocationTracker<Epoch>> loc : locMap.entrySet()) {
+            ShadowEntry<Epoch> entry = history.getShadowEntry(loc.getValue());
+            if (entry.size() != 1) {
+                errorNum += 1;
+                System.out.println(loc.getKey() + " final size is " + entry.size());
+                System.out.println(entry);
+            }
+        }
+        System.out.println("total number of unaccomplished memory locations is " + errorNum);
     }
 }

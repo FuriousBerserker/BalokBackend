@@ -67,6 +67,10 @@ public class FixedParallelSPSCFrameAnalyzer {
         System.out.println("tackled memory access: " + tackledAccess.get());
     }
 
+    public AtomicLong getTackledAccess() {
+        return tackledAccess;
+    }
+
     class WorkerThread implements Runnable {
 
         private int tid;

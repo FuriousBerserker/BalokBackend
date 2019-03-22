@@ -87,7 +87,7 @@ public class App {
         kryo.setReferences(false);
         kryo.setRegistrationRequired(true);
         kryo.register(SerializedFrame.class, new FrameSerializer());
-        long accessNum = 0;
+        long accessNum = 0L;
         if (line.getArgs().length == 0) {
             System.out.println("Please input log file");
             help.printHelp("java App", options, true);
@@ -142,6 +142,10 @@ public class App {
             Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 accessNum += frame.get().size();
+                for (int i = 0; i < frame.get().size(); i++) {
+                    System.out.println(frame.get().getTickets()[i]);
+                }
+                System.out.println("==============================================");
                 frame = input.getNextFrame();
             }
         } else if (line.hasOption(parallel.getOpt())) {
@@ -151,10 +155,17 @@ public class App {
             //FixedParallelBlockingQueueFrameAnalyzer analyzer = new FixedParallelBlockingQueueFrameAnalyzer(parallelism);
             FixedParallelSPSCFrameAnalyzer analyzer = new FixedParallelSPSCFrameAnalyzer(parallelism);
             Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+//            int count = 0;
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());
                 accessNum += frame.get().size();
                 frame = input.getNextFrame();
+//                count++;
+//                while (count == 100) {
+//                    count = 0;
+//                    System.out.println("input memory access: " + accessNum);
+//                    System.out.println("tackled memory access: " + analyzer.getTackledAccess());
+//                }
             }
             analyzer.noMoreInput();
             analyzer.close();
@@ -170,6 +181,7 @@ public class App {
                 frame = input.getNextFrame();
             }
             analyzer.close();
+            //analyzer.sanityCheck();
         }
 
         long elapsedTime = 0l;
