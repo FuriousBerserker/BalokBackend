@@ -142,10 +142,10 @@ public class App {
             Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 accessNum += frame.get().size();
-                for (int i = 0; i < frame.get().size(); i++) {
-                    System.out.println(frame.get().getTickets()[i]);
-                }
-                System.out.println("==============================================");
+                //for (int i = 0; i < frame.get().size(); i++) {
+                    //System.out.println(frame.get().getTickets()[i]);
+                //}
+                //System.out.println("==============================================");
                 frame = input.getNextFrame();
             }
         } else if (line.hasOption(parallel.getOpt())) {

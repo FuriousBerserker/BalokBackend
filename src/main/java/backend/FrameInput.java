@@ -23,12 +23,21 @@ public class FrameInput {
         public FrameInput(Kryo kryo, List<Input> inputList) {
             this.kryo = kryo;
             this.inputList = inputList;
-            this.roundRobinIter = inputList.listIterator();
+            // filter empty inputs
+            ListIterator<Input> iter = inputList.listIterator();
+            while (iter.hasNext()) {
+                Input input = iter.next();
+                if (input.eof()) {
+                   input.close();
+                   iter.remove();
+                }
+            }
             if (inputList.isEmpty()) {
                 isEmpty = true;
             } else {
                 isEmpty = false;
             }
+            this.roundRobinIter = inputList.listIterator();
         }
 
         public Optional<SerializedFrame<Epoch>> getNextFrame() {
