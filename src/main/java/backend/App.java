@@ -172,16 +172,16 @@ public class App {
         } else if (line.hasOption(sequential.getOpt())){
             // sequential data race detection mode
             System.out.println("Sequential mode, detect data races sequentially");
-            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer();
+            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer(false);
             Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
             while (frame.isPresent()) {
-                //analyzer.addFrame(frame.get());
-                analyzer.addFrameByMemoryAccess(frame.get());
+                analyzer.addFrame(frame.get());
+                //analyzer.addFrameByMemoryAccess(frame.get());
                 accessNum += frame.get().size();
                 frame = input.getNextFrame();
             }
             analyzer.close();
-            //analyzer.sanityCheck();
+            analyzer.sanityCheck();
         }
 
         long elapsedTime = 0l;
