@@ -122,9 +122,9 @@ public class App {
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        } catch (IOException e) {
+        } /*catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
 
         FrameInput input = new FrameInput(kryo, logFileInputs);
 
