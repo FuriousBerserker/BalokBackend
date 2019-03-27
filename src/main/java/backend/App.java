@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 import java.util.ArrayList;
 
+import net.jpountz.lz4.LZ4BlockInputStream;
+import net.jpountz.lz4.LZ4FrameInputStream;
 import tools.balok.FrameSerializer;
 import balok.ser.SerializedFrame;
 import balok.causality.Epoch;
@@ -114,7 +116,8 @@ public class App {
         ArrayList<Input> logFileInputs = new ArrayList<>();
         try {
             for (File logFile : logFolder.listFiles(logFileFilter)) {
-                Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
+                //Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
+                Input input = new Input(new LZ4BlockInputStream(new FileInputStream(logFile)));
                 logFileInputs.add(input);
             }
         } catch (FileNotFoundException e) {

@@ -44,6 +44,7 @@ dependencies {
     compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.24.0'
     compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
     compile group: 'org.knowm.xchart', name: 'xchart', version: '3.5.4'
+    compile group: 'org.lz4', name: 'lz4-java', version: '1.5.1'
 
     // This dependency is found on compile classpath of this component and consumers.
     implementation 'com.google.guava:guava:26.0-jre'
