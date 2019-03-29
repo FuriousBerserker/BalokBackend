@@ -38,6 +38,7 @@ public class App {
         Option statistics = new Option("c", false, "show statistics of the log file");
         Option parallel = new Option("p", true, "enable parallel data race detection");
         Option sequential = new Option("s", false, "enable sequential data race detection");
+        Option debug = new Option("d", false, "debug mode");
         //Option localMerge = new Option("m", false, "enable sequential data race detection with local merging optimization");
 
         options.addOption(time);
@@ -45,6 +46,7 @@ public class App {
         options.addOption(statistics);
         options.addOption(parallel);
         options.addOption(sequential);
+        options.addOption(debug);
         //options.addOption(localMerge);
         CommandLine line = null;
         HelpFormatter help = new HelpFormatter();
@@ -151,6 +153,16 @@ public class App {
                 //System.out.println("==============================================");
                 frame = input.getNextFrame();
             }
+        } else if (line.hasOption(debug.getOpt())) {
+            System.out.println("Debug mode");
+            Debug dbg = new Debug(benchmarkName);
+            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            while (frame.isPresent()) {
+                dbg.addFrame(frame.get());
+                accessNum += frame.get().size();
+                frame = input.getNextFrame();
+            }
+            dbg.findSingleAccessLocation();
         } else if (line.hasOption(parallel.getOpt())) {
             // parallel data race detection mode
             int parallelism = Integer.parseInt(line.getOptionValue(parallel.getOpt()));

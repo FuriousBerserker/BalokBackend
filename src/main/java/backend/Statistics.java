@@ -29,7 +29,7 @@ public class Statistics {
 
     public void addFrame(SerializedFrame<Epoch> frame) {
         for (int i = 0; i < frame.size(); i++) {
-            long numOfAccess = accessDistribution.getOrDefault(frame.getAddresses()[i], 0l) + 1;
+            long numOfAccess = accessDistribution.getOrDefault(frame.getAddresses()[i], 0L) + 1;
             accessDistribution.put(frame.getAddresses()[i], numOfAccess);
         }
     }
@@ -87,7 +87,7 @@ public class Statistics {
         accessDistributionChart.addSeries("sampled access", sampleKeys, sampleValues);
 
         //quickSort(valueList, keyList, 0, valueList.size(), random, Comparators.longComparator);
-        final int THRESHOLD = 10000;
+        final int THRESHOLD = 10;
         valueList.sort(Comparators.longComparator);
         ArrayList<Long> accessNumList = new ArrayList<>();
         ArrayList<Long> addressNumList = new ArrayList<>();
