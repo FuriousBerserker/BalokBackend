@@ -1,11 +1,10 @@
 package backend;
 
-import balok.causality.Epoch;
-import balok.ser.SerializedFrame;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
+import tools.fasttrack_frontend.FTSerializedState;
 
-import javax.swing.text.html.Option;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Optional;
@@ -20,7 +19,9 @@ public class FrameInput {
 
         private boolean isEmpty;
 
-        public FrameInput(Kryo kryo, List<Input> inputList) {
+        private final int MAX_FRAME_SIZE;
+
+        public FrameInput(Kryo kryo, List<Input> inputList, int frameSize) {
             this.kryo = kryo;
             this.inputList = inputList;
             // filter empty inputs
@@ -38,17 +39,24 @@ public class FrameInput {
                 isEmpty = false;
             }
             this.roundRobinIter = inputList.listIterator();
+            this.MAX_FRAME_SIZE = frameSize;
         }
 
-        public Optional<SerializedFrame<Epoch>> getNextFrame() {
+        public Optional<FTSerializedState[]> getNextFrame() {
            if (isEmpty) {
                return Optional.empty();
            } else {
                Input input = roundRobinIter.next();
-               Optional frame = Optional.of(kryo.readObject(input, SerializedFrame.class));
+               FTSerializedState[] frame = new FTSerializedState[MAX_FRAME_SIZE];
+               int count = 0;
+               while (count < MAX_FRAME_SIZE && !input.eof()) {
+                   frame[count++] = kryo.readObject(input, FTSerializedState.class);
+               }
+
                if (input.eof()) {
                    input.close();
                    roundRobinIter.remove();
+                   frame = Arrays.copyOfRange(frame, 0, count);
                }
                if (!roundRobinIter.hasNext()) {
                    if (inputList.isEmpty()) {
@@ -59,7 +67,7 @@ public class FrameInput {
                        roundRobinIter = inputList.listIterator();
                    }
                }
-               return frame;
+               return Optional.of(frame);
            }
         }
 }

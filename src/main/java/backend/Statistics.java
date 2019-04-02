@@ -1,7 +1,5 @@
 package backend;
 
-import balok.causality.Epoch;
-import balok.ser.SerializedFrame;
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
@@ -10,6 +8,7 @@ import org.knowm.xchart.*;
 import org.knowm.xchart.style.Styler;
 import org.knowm.xchart.style.lines.SeriesLines;
 import org.knowm.xchart.style.markers.SeriesMarkers;
+import tools.fasttrack_frontend.FTSerializedState;
 
 import java.awt.*;
 import java.io.IOException;
@@ -27,10 +26,11 @@ public class Statistics {
         this.benchmarkName = benchmarkName;
     }
 
-    public void addFrame(SerializedFrame<Epoch> frame) {
-        for (int i = 0; i < frame.size(); i++) {
-            long numOfAccess = accessDistribution.getOrDefault(frame.getAddresses()[i], 0L) + 1;
-            accessDistribution.put(frame.getAddresses()[i], numOfAccess);
+    public void addFrame(FTSerializedState[] frame) {
+        for (int i = 0; i < frame.length; i++) {
+            FTSerializedState state = frame[i];
+            long numOfAccess = accessDistribution.getOrDefault(state.getAddress(), 0L) + 1;
+            accessDistribution.put(state.getAddress(), numOfAccess);
         }
     }
 

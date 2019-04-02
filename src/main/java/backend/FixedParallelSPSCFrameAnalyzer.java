@@ -1,19 +1,16 @@
 package backend;
 
-import balok.causality.AccessMode;
-import balok.causality.Epoch;
-import balok.causality.async.*;
-import balok.ser.SerializedFrame;
+import backend.util.SimpleShadowMemory;
 import org.jctools.queues.SpscLinkedQueue;
+import tools.fasttrack_frontend.FTSerializedState;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FixedParallelSPSCFrameAnalyzer {
 
     private final int workerThreadNum;
 
-    private SpscLinkedQueue<MemoryAccess>[] queues;
+    private SpscLinkedQueue<FTSerializedState>[] queues;
 
     private Thread[] workerThreads;
 
@@ -40,16 +37,16 @@ public class FixedParallelSPSCFrameAnalyzer {
         }
     }
 
-    public void addFrame(SerializedFrame<Epoch> frame) {
-        for (int i = 0; i < frame.size(); i++) {
-            int address = frame.getAddresses()[i];
+    public void addFrame(FTSerializedState[] frame) {
+        for (int i = 0; i < frame.length; i++) {
+            FTSerializedState state = frame[i];
+            int address = frame[i].getAddress();
             // partition memory accesses in a round-robin manner
             int workerThreadTid = address % workerThreadNum;
             if (workerThreadTid < 0) {
                 workerThreadTid = -workerThreadTid;
             }
-            MemoryAccess access = new MemoryAccess(address, frame.getModes()[i], frame.getEvents()[i], frame.getTickets()[i]);
-            queues[workerThreadTid].offer(access);
+            queues[workerThreadTid].offer(state);
             status[workerThreadTid].submit();
         }
 
@@ -80,12 +77,6 @@ public class FixedParallelSPSCFrameAnalyzer {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-//        System.out.println("Race Detection Complete");
-//        try {
-//            Thread.sleep(Integer.MAX_VALUE);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
         System.out.println("tackled memory access: " + tackledAccess.get());
     }
 
@@ -97,15 +88,15 @@ public class FixedParallelSPSCFrameAnalyzer {
 
         private int tid;
 
-        private SpscLinkedQueue<MemoryAccess> queue;
+        private SpscLinkedQueue<FTSerializedState> queue;
 
         private Status status;
 
-        private SimpleShadowMemory history = new SimpleShadowMemory(SparseShadowEntry::new);
+        private SimpleShadowMemory history = new SimpleShadowMemory();
 
         private int tackledAccessPerThread = 0;
 
-        public WorkerThread(int tid, SpscLinkedQueue<MemoryAccess> queue, Status status) {
+        public WorkerThread(int tid, SpscLinkedQueue<FTSerializedState> queue, Status status) {
             this.tid = tid;
             this.queue = queue;
             this.status = status;
@@ -118,15 +109,15 @@ public class FixedParallelSPSCFrameAnalyzer {
                 if (isNoMoreInput && queue.isEmpty()) {
                     break;
                 }
-                MemoryAccess access = null;
+                FTSerializedState state = null;
                 for (int i = 0; i < MAX_POLL_TIME; i++) {
-                    access = queue.poll();
-                    if (access != null) {
+                    state = queue.poll();
+                    if (state != null) {
                         break;
                     }
                 }
-                if (access != null) {
-                    history.add(access.getAddress(), access.getMode(), access.getEvent(), access.getTicket());
+                if (state != null) {
+                    history.add(state.getAddress(), state.isWrite(), state.getEvent(), state.getTicket(), state.getTid());
                     status.tackle();
                     count++;
                     if (count == 100) {

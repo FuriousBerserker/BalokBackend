@@ -1,9 +1,8 @@
 package backend;
 
-import balok.causality.Epoch;
-import balok.ser.SerializedFrame;
 import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.cursors.IntLongCursor;
+import tools.fasttrack_frontend.FTSerializedState;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -33,10 +32,10 @@ public class Debug {
 //        }
     }
 
-    public void addFrame(SerializedFrame<Epoch> frame) {
-        for (int i = 0; i < frame.size(); i++) {
-            long numOfAccess = accessDistribution.getOrDefault(frame.getAddresses()[i], 0L) + 1L;
-            accessDistribution.put(frame.getAddresses()[i], numOfAccess);
+    public void addFrame(FTSerializedState[] frame) {
+        for (int i = 0; i < frame.length; i++) {
+            long numOfAccess = accessDistribution.getOrDefault(frame[i].getAddress(), 0L) + 1L;
+            accessDistribution.put(frame[i].getAddress(), numOfAccess);
 //            if (accessMap.contains(frame.getAddresses()[i])) {
 //                System.out.println(frame.getAddresses()[i] + " " + frame.getTickets()[i] + " " + frame.getModes()[i].name());
 //            }

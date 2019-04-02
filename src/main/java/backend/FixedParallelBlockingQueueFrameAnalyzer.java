@@ -1,22 +1,18 @@
 package backend;
 
-import balok.causality.AccessMode;
-import balok.causality.Epoch;
-import balok.causality.async.*;
-import balok.ser.SerializedFrame;
-import it.unimi.dsi.fastutil.Hash;
-import javafx.scene.effect.Shadow;
+import backend.util.SimpleShadowMemory;
+import tools.fasttrack_frontend.FTSerializedState;
 
-import java.io.IOException;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FixedParallelBlockingQueueFrameAnalyzer {
 
     private final int workerThreadNum;
 
-    private BlockingQueue<MemoryAccess>[] queues;
+    private BlockingQueue<FTSerializedState>[] queues;
 
     private Thread[] workerThreads;
 
@@ -35,16 +31,16 @@ public class FixedParallelBlockingQueueFrameAnalyzer {
         }
     }
 
-    public void addFrame(SerializedFrame<Epoch> frame) {
-        for (int i = 0; i < frame.size(); i++) {
-            int address = frame.getAddresses()[i];
+    public void addFrame(FTSerializedState[] frame) {
+        for (int i = 0; i < frame.length; i++) {
+            FTSerializedState state = frame[i];
+            int address = state.getAddress();
             // partition memory accesses in a round-robin manner
             int workerThreadTid = address % workerThreadNum;
             if (workerThreadTid < 0) {
                 workerThreadTid = -workerThreadTid;
             }
-            MemoryAccess access = new MemoryAccess(address, frame.getModes()[i], frame.getEvents()[i], frame.getTickets()[i]);
-            queues[workerThreadTid].offer(access);
+            queues[workerThreadTid].offer(state);
         }
     }
 
@@ -67,11 +63,11 @@ public class FixedParallelBlockingQueueFrameAnalyzer {
 
         private int tid;
 
-        private BlockingQueue<MemoryAccess> queue;
+        private BlockingQueue<FTSerializedState> queue;
 
-        private SimpleShadowMemory history = new SimpleShadowMemory(SparseShadowEntry::new);
+        private SimpleShadowMemory history = new SimpleShadowMemory();
 
-        public WorkerThread(int tid, BlockingQueue<MemoryAccess> queue) {
+        public WorkerThread(int tid, BlockingQueue<FTSerializedState> queue) {
             this.tid = tid;
             this.queue = queue;
         }
@@ -83,9 +79,9 @@ public class FixedParallelBlockingQueueFrameAnalyzer {
                     break;
                 }
                 try {
-                    MemoryAccess access = queue.poll(1000, TimeUnit.MILLISECONDS);
-                    if (access != null) {
-                        history.add(access.getAddress(), access.getMode(), access.getEvent(), access.getTicket());
+                    FTSerializedState state = queue.poll(1000, TimeUnit.MILLISECONDS);
+                    if (state != null) {
+                        history.add(state.getAddress(), state.isWrite(), state.getEvent(), state.getTicket(), state.getTid());
                         tackledAccess.incrementAndGet();
                     }
                 } catch (InterruptedException e) {

@@ -5,14 +5,9 @@ package backend;
 
 import java.io.*;
 import java.util.Optional;
-import java.util.zip.GZIPInputStream;
 import java.util.ArrayList;
 
 import net.jpountz.lz4.LZ4BlockInputStream;
-import net.jpountz.lz4.LZ4FrameInputStream;
-import tools.balok.FrameSerializer;
-import balok.ser.SerializedFrame;
-import balok.causality.Epoch;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -23,6 +18,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import tools.fasttrack_frontend.FTSerializedState;
+import tools.fasttrack_frontend.FTSerializedStateSerializer;
 
 public class App {
     
@@ -39,7 +36,6 @@ public class App {
         Option parallel = new Option("p", true, "enable parallel data race detection");
         Option sequential = new Option("s", false, "enable sequential data race detection");
         Option debug = new Option("d", false, "debug mode");
-        //Option localMerge = new Option("m", false, "enable sequential data race detection with local merging optimization");
 
         options.addOption(time);
         options.addOption(silent);
@@ -47,7 +43,7 @@ public class App {
         options.addOption(parallel);
         options.addOption(sequential);
         options.addOption(debug);
-        //options.addOption(localMerge);
+
         CommandLine line = null;
         HelpFormatter help = new HelpFormatter();
         try {
@@ -58,31 +54,6 @@ public class App {
             System.exit(1);
         }
 
-
-        // code that handle MemoryAccess objects
-        /* ArrayList<MemoryAccess> accesses = new ArrayList<>();
-        Kryo kryo = new Kryo();
-        kryo.setReferences(false);
-        kryo.register(MemoryAccess.class, new MemoryAccessSerializer());
-        try {
-            Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
-            MemoryAccess access = null;
-            while (!input.eof()) {
-                access = kryo.readObject(input, MemoryAccess.class);
-                accesses.add(access);
-            }
-            input.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Number of memory accesses: " + accesses.size());
-        //for (MemoryAccess access: accesses) {
-            //System.out.println(access.getAddress() + " " + access.getFile() + " " + access.getLine());
-        //}
-        MemoryAccessAnalyzer analyzer = new MemoryAccessAnalyzer(accesses);
-        analyzer.doRaceDetection(); */
-
-
         long start = 0l;
         if (line.hasOption(time.getOpt())) {
             start = System.currentTimeMillis();
@@ -90,7 +61,7 @@ public class App {
         Kryo kryo = new Kryo();
         kryo.setReferences(false);
         kryo.setRegistrationRequired(true);
-        kryo.register(SerializedFrame.class, new FrameSerializer());
+        kryo.register(FTSerializedState.class, new FTSerializedStateSerializer());
         long accessNum = 0L;
         if (line.getArgs().length == 0) {
             System.out.println("Please input log file");
@@ -128,38 +99,35 @@ public class App {
             e.printStackTrace();
         }*/
 
-        FrameInput input = new FrameInput(kryo, logFileInputs);
+        FrameInput input = new FrameInput(kryo, logFileInputs, 512);
 
         if (line.hasOption(statistics.getOpt())) {
             // statistics mode
             System.out.println("Statistics mode, calculate the distribution of memory accesses");
             Statistics ss = new Statistics(benchmarkName);
-            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            Optional<FTSerializedState[]> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 ss.addFrame(frame.get());
-                accessNum += frame.get().size();
+                accessNum += frame.get().length;
                 frame = input.getNextFrame();
             }
             ss.generateFigure();
         } else if (line.hasOption(silent.getOpt())) {
             // silent mode
             System.out.println("Silent mode, does not carry out data race detection");
-            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            Optional<FTSerializedState[]> frame = input.getNextFrame();
             while (frame.isPresent()) {
-                accessNum += frame.get().size();
-                //for (int i = 0; i < frame.get().size(); i++) {
-                    //System.out.println(frame.get().getTickets()[i]);
-                //}
-                //System.out.println("==============================================");
+                accessNum += frame.get().length;
                 frame = input.getNextFrame();
             }
         } else if (line.hasOption(debug.getOpt())) {
+            // debug mode, checking whether input file matches expectations
             System.out.println("Debug mode");
             Debug dbg = new Debug(benchmarkName);
-            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            Optional<FTSerializedState[]> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 dbg.addFrame(frame.get());
-                accessNum += frame.get().size();
+                accessNum += frame.get().length;
                 frame = input.getNextFrame();
             }
             dbg.findSingleAccessLocation();
@@ -169,11 +137,11 @@ public class App {
             System.out.println("Parallel mode, detect data races in parallel with " + parallelism + " threads");
             //FixedParallelBlockingQueueFrameAnalyzer analyzer = new FixedParallelBlockingQueueFrameAnalyzer(parallelism);
             FixedParallelSPSCFrameAnalyzer analyzer = new FixedParallelSPSCFrameAnalyzer(parallelism);
-            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            Optional<FTSerializedState[]> frame = input.getNextFrame();
 //            int count = 0;
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());
-                accessNum += frame.get().size();
+                accessNum += frame.get().length;
                 frame = input.getNextFrame();
 //                count++;
 //                while (count == 100) {
@@ -187,16 +155,14 @@ public class App {
         } else if (line.hasOption(sequential.getOpt())){
             // sequential data race detection mode
             System.out.println("Sequential mode, detect data races sequentially");
-            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer(false);
-            Optional<SerializedFrame<Epoch>> frame = input.getNextFrame();
+            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer();
+            Optional<FTSerializedState[]> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());
-                //analyzer.addFrameByMemoryAccess(frame.get());
-                accessNum += frame.get().size();
+                accessNum += frame.get().length;
                 frame = input.getNextFrame();
             }
             analyzer.close();
-            analyzer.sanityCheck();
         }
 
         long elapsedTime = 0l;
