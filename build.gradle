@@ -19,7 +19,7 @@ plugins {
 version = "1.0-dev"
 group = "t.cog.balok"
 description = "A tiny balok backend to tackle dumped memory accesses"
-applicationDefaultJvmArgs = ["-Xms4g", "-Xmx4g", "-Xss1m", 
+applicationDefaultJvmArgs = ["-Xms8g", "-Xmx8g", "-Xss1m", 
 // debug options
 //"-XX:+PrintGCDetails", 
 //"-XX:+PrintGCApplicationStoppedTime", 
@@ -40,7 +40,7 @@ repositories {
 }
 
 dependencies {
-    compile "t.cog.balok:balok:1.0-dev"
+    // compile "t.cog.balok:balok:1.0-dev"
     compile "com.carrotsearch:hppc:0.7.2"
     compile group: 'org.jctools', name: 'jctools-core', version: '2.1.1'
     compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.24.0'

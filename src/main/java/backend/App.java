@@ -90,7 +90,7 @@ public class App {
         try {
             for (File logFile : logFolder.listFiles(logFileFilter)) {
                 //Input input = new Input(new GZIPInputStream(new FileInputStream(logFile)));
-                Input input = new Input(new LZ4BlockInputStream(new FileInputStream(logFile)));
+                Input input = new Input(new LZ4BlockInputStream(new FileInputStream(logFile)), 8192);
                 logFileInputs.add(input);
             }
         } catch (FileNotFoundException e) {
@@ -153,6 +153,7 @@ public class App {
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());
                 accessNum += frame.get().length;
+                //System.out.println("access number = " + accessNum);
                 frame = input.getNextFrame();
             }
             analyzer.close();
