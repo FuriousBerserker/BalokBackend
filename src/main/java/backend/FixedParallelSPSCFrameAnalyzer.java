@@ -129,13 +129,13 @@ public class FixedParallelSPSCFrameAnalyzer {
                         }
                     }
                     //tackledAccess.incrementAndGet();
-//                    tackledAccessPerThread++;
+                    tackledAccessPerThread++;
 //                    if (tackledAccessPerThread % 10000 == 0) {
 //                        System.out.println("worker thread " + tid + "shadow memory size " + history.getEntryNum());
 //                    }
                 }
             }
-            // System.out.println("worked thread " + tid + " tackled " + tackledAccessPerThread + " accesses");
+            System.out.println("worked thread " + tid + " tackled " + tackledAccessPerThread + " accesses");
         }
     }
 }

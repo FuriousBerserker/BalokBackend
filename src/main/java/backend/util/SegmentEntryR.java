@@ -1,17 +1,86 @@
 package backend.util;
 
+import java.sql.SQLOutput;
 import java.util.Arrays;
 
 public abstract class SegmentEntryR {
 
     private SegmentEntryR() {}
 
+    private static enum RaceType {
+        RW {
+            @Override
+            public String toString() {
+                return "read-write race";
+            }
+        },
+
+        WW {
+            @Override
+            public String toString() {
+                return "write-write race";
+            }
+        },
+
+        WR {
+            @Override
+            public String toString() {
+                return "write-read race";
+            }
+        }
+    }
+
     public static boolean THROW_EXCEPTION = false;
 
-    private static void reportError() {
+    public static int TID_BITS = 5;
+
+    public static final int CLOCK_BITS = Integer.SIZE - TID_BITS;
+
+    public static final int MAX_CLOCK = ( ((int)1) << CLOCK_BITS) - 1;
+
+    public static int clock(int epoch) {
+        return epoch & MAX_CLOCK;
+    }
+
+    public static boolean leq(int/*epoch*/ e1, int/*epoch*/ e2) {
+        // Assert.assertTrue(tid(e1) == tid(e2));
+        return clock(e1) <= clock(e2);
+    }
+
+    public static int/*epoch*/ make(int tid, int/*epoch*/ clock) {
+        return (((int/*epoch*/)tid) << CLOCK_BITS) | clock;
+    }
+
+    private static void reportError(int tid, int epoch, int[] vc, RaceType type) {
         if (THROW_EXCEPTION) {
             throw new IllegalStateException();
         }
+        StringBuilder builder = new StringBuilder();
+        builder.append(type.toString());
+        builder.append('\n');
+        builder.append("access 1: ");
+        builder.append(tid);
+        builder.append("->");
+        builder.append(epoch);
+        builder.append('\n');
+        builder.append("access 2: ");
+        builder.append(Arrays.toString(vc));
+        System.out.println(builder.toString());
+    }
+
+    private static void reportError(int[] vc1, int[] vc2, RaceType type) {
+        if (THROW_EXCEPTION) {
+            throw new IllegalStateException();
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append(type.toString());
+        builder.append('\n');
+        builder.append("access 1: ");
+        builder.append(Arrays.toString(vc1));
+        builder.append('\n');
+        builder.append("access 2: ");
+        builder.append(Arrays.toString(vc2));
+        System.out.println(builder.toString());
     }
 
     public static SegmentEntryR make(boolean isWrite, int epoch, int tid) {
@@ -24,7 +93,7 @@ public abstract class SegmentEntryR {
 
     // Check epoch <= vc
     private static boolean ensureHappensBefore(int tid, int epoch, int[] vc) {
-        if (tid >= vc.length || vc[tid] < epoch) {
+        if (tid >= vc.length || !leq(epoch, vc[tid])) {
             return false;
         } else {
             return true;
@@ -36,13 +105,13 @@ public abstract class SegmentEntryR {
         int minLen = Math.min(vc1.length, vc2.length);
 
         for (int i = 0; i < minLen; i++) {
-            if (vc1[i] > vc2[i]) {
+            if (!leq(vc1[i], vc2[i])) {
                 return false;
             }
         }
 
         for (int i = minLen; i < vc1.length; i++) {
-            if (vc1[i] != 0) {
+            if (vc1[i] != make(i, 0)) {
                 return false;
             }
         }
@@ -58,7 +127,7 @@ public abstract class SegmentEntryR {
             other = vc1;
         }
         for (int i = 0; i < other.length; i++) {
-            result[i] = Math.max(other[i], result[i]);
+            result[i] = make(i, Math.max(clock(other[i]), clock(result[i])));
         }
         return result;
     }
@@ -90,25 +159,23 @@ public abstract class SegmentEntryR {
                 SegmentEntryL.RW_L rw = (SegmentEntryL.RW_L) other;
                 for (int[] rw_read : rw.reads) {
                     if (!ensureHappensBefore(tid, write, rw_read)) {
-                        reportError();
+                        reportError(tid, write, rw_read, RaceType.WR);
                     }
                 }
                 // check write-write race
                 if (!ensureHappensBefore(tid, write, rw.write)) {
-                    reportError();
+                    reportError(tid, write, rw.write, RaceType.WW);
                 }
-
                 // check read-write race
                 if (!ensureHappensBefore(reads, rw.write)) {
-                    reportError();
+                    reportError(reads, rw.write, RaceType.RW);
                 }
-
-
             } else {
                 SegmentEntryL.RR_L rr = (SegmentEntryL.RR_L) other;
+                // check write-read race
                 for (int[] rr_read : rr.reads) {
                     if (!ensureHappensBefore(tid, write, rr_read)) {
-                        reportError();
+                        reportError(tid, write, rr_read, RaceType.WR);
                     }
                 }
             }
@@ -173,10 +240,8 @@ public abstract class SegmentEntryR {
                 SegmentEntryL.RW_L rw = (SegmentEntryL.RW_L) other;
                 // check read-write error
                 if (!ensureHappensBefore(reads, rw.write)) {
-                    reportError();
+                    reportError(reads, rw.write, RaceType.RW);
                 }
-            } else {
-
             }
         }
 

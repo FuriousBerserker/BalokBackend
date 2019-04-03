@@ -25,6 +25,8 @@ public class SequentialFrameAnalyzer {
     public void addFrame(FTSerializedState[] frame) {
         for (int i = 0; i < frame.length; i++) {
             FTSerializedState state = frame[i];
+//            System.out.println(state);
+//            System.out.println("================================");
             history.add(state.getAddress(), state.isWrite(), state.getEvent(), state.getTicket(), state.getTid());
         }
         tackledAccess += frame.length;

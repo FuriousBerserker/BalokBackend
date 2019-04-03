@@ -138,24 +138,17 @@ public class App {
             //FixedParallelBlockingQueueFrameAnalyzer analyzer = new FixedParallelBlockingQueueFrameAnalyzer(parallelism);
             FixedParallelSPSCFrameAnalyzer analyzer = new FixedParallelSPSCFrameAnalyzer(parallelism);
             Optional<FTSerializedState[]> frame = input.getNextFrame();
-//            int count = 0;
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());
                 accessNum += frame.get().length;
                 frame = input.getNextFrame();
-//                count++;
-//                while (count == 100) {
-//                    count = 0;
-//                    System.out.println("input memory access: " + accessNum);
-//                    System.out.println("tackled memory access: " + analyzer.getTackledAccess());
-//                }
             }
             analyzer.noMoreInput();
             analyzer.close();
         } else if (line.hasOption(sequential.getOpt())){
             // sequential data race detection mode
             System.out.println("Sequential mode, detect data races sequentially");
-            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer();
+            SequentialFrameAnalyzer analyzer = new SequentialFrameAnalyzer(true);
             Optional<FTSerializedState[]> frame = input.getNextFrame();
             while (frame.isPresent()) {
                 analyzer.addFrame(frame.get());
