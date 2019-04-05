@@ -18,7 +18,7 @@ public class TestSegment {
     public static int[] getFT2VC(int[] original) {
         int[] result = new int[original.length];
         for (int i = 0; i < original.length; i++) {
-            result[i] = SegmentEntryR.make(i, original[i]);
+            result[i] = Epoch.make(i, original[i]);
         }
         return result;
     }

@@ -1,6 +1,5 @@
 package backend.util;
 
-import java.sql.SQLOutput;
 import java.util.Arrays;
 
 public abstract class SegmentEntryR {
@@ -32,26 +31,7 @@ public abstract class SegmentEntryR {
 
     public static boolean THROW_EXCEPTION = false;
 
-    public static int TID_BITS = 5;
-
-    public static final int CLOCK_BITS = Integer.SIZE - TID_BITS;
-
-    public static final int MAX_CLOCK = ( ((int)1) << CLOCK_BITS) - 1;
-
-    public static int clock(int epoch) {
-        return epoch & MAX_CLOCK;
-    }
-
-    public static boolean leq(int/*epoch*/ e1, int/*epoch*/ e2) {
-        // Assert.assertTrue(tid(e1) == tid(e2));
-        return clock(e1) <= clock(e2);
-    }
-
-    public static int/*epoch*/ make(int tid, int/*epoch*/ clock) {
-        return (((int/*epoch*/)tid) << CLOCK_BITS) | clock;
-    }
-
-    private static void reportError(int tid, int epoch, int[] vc, RaceType type) {
+    private static void reportError(int epoch, int[] vc, RaceType type) {
         if (THROW_EXCEPTION) {
             throw new IllegalStateException();
         }
@@ -59,13 +39,13 @@ public abstract class SegmentEntryR {
         builder.append(type.toString());
         builder.append('\n');
         builder.append("access 1: ");
-        builder.append(tid);
+        builder.append(Epoch.tid(epoch));
         builder.append("->");
-        builder.append(epoch);
+        builder.append(Epoch.clock(epoch));
         builder.append('\n');
         builder.append("access 2: ");
-        builder.append(Arrays.toString(vc));
-        System.out.println(builder.toString());
+        builder.append(Arrays.toString(Epoch.toClock(vc)));
+        //System.out.println(builder.toString());
     }
 
     private static void reportError(int[] vc1, int[] vc2, RaceType type) {
@@ -76,24 +56,25 @@ public abstract class SegmentEntryR {
         builder.append(type.toString());
         builder.append('\n');
         builder.append("access 1: ");
-        builder.append(Arrays.toString(vc1));
+        builder.append(Arrays.toString(Epoch.toClock(vc1)));
         builder.append('\n');
         builder.append("access 2: ");
-        builder.append(Arrays.toString(vc2));
-        System.out.println(builder.toString());
+        builder.append(Arrays.toString(Epoch.toClock(vc2)));
+        //System.out.println(builder.toString());
     }
 
-    public static SegmentEntryR make(boolean isWrite, int epoch, int tid) {
+    public static SegmentEntryR make(boolean isWrite, int epoch) {
         if (isWrite) {
-            return new WR_R(epoch, tid);
+            return new WR_R(epoch);
         } else {
-            return new RR_R(epoch, tid);
+            return new RR_R(epoch);
         }
     }
 
     // Check epoch <= vc
-    private static boolean ensureHappensBefore(int tid, int epoch, int[] vc) {
-        if (tid >= vc.length || !leq(epoch, vc[tid])) {
+    private static boolean ensureHappensBefore(int epoch, int[] vc) {
+        int tid = Epoch.tid(epoch);
+        if (tid >= vc.length || !Epoch.leq(epoch, vc[tid])) {
             return false;
         } else {
             return true;
@@ -105,13 +86,13 @@ public abstract class SegmentEntryR {
         int minLen = Math.min(vc1.length, vc2.length);
 
         for (int i = 0; i < minLen; i++) {
-            if (!leq(vc1[i], vc2[i])) {
+            if (!Epoch.leq(vc1[i], vc2[i])) {
                 return false;
             }
         }
 
         for (int i = minLen; i < vc1.length; i++) {
-            if (vc1[i] != make(i, 0)) {
+            if (vc1[i] != Epoch.make(i, 0)) {
                 return false;
             }
         }
@@ -127,7 +108,7 @@ public abstract class SegmentEntryR {
             other = vc1;
         }
         for (int i = 0; i < other.length; i++) {
-            result[i] = make(i, Math.max(clock(other[i]), clock(result[i])));
+            result[i] = Epoch.make(i, Math.max(Epoch.clock(other[i]), Epoch.clock(result[i])));
         }
         return result;
     }
@@ -140,15 +121,12 @@ public abstract class SegmentEntryR {
 
         public int write;
 
-        public int tid;
-
         public int[] reads;
 
         private final static int[] EMPTY = new int[0];
 
-        public WR_R(int epoch, int tid) {
+        public WR_R(int epoch) {
             this.write = epoch;
-            this.tid = tid;
             this.reads = EMPTY;
         }
 
@@ -158,13 +136,13 @@ public abstract class SegmentEntryR {
                 // check write-read race
                 SegmentEntryL.RW_L rw = (SegmentEntryL.RW_L) other;
                 for (int[] rw_read : rw.reads) {
-                    if (!ensureHappensBefore(tid, write, rw_read)) {
-                        reportError(tid, write, rw_read, RaceType.WR);
+                    if (!ensureHappensBefore(write, rw_read)) {
+                        reportError(write, rw_read, RaceType.WR);
                     }
                 }
                 // check write-write race
-                if (!ensureHappensBefore(tid, write, rw.write)) {
-                    reportError(tid, write, rw.write, RaceType.WW);
+                if (!ensureHappensBefore(write, rw.write)) {
+                    reportError(write, rw.write, RaceType.WW);
                 }
                 // check read-write race
                 if (!ensureHappensBefore(reads, rw.write)) {
@@ -174,8 +152,8 @@ public abstract class SegmentEntryR {
                 SegmentEntryL.RR_L rr = (SegmentEntryL.RR_L) other;
                 // check write-read race
                 for (int[] rr_read : rr.reads) {
-                    if (!ensureHappensBefore(tid, write, rr_read)) {
-                        reportError(tid, write, rr_read, RaceType.WR);
+                    if (!ensureHappensBefore(write, rr_read)) {
+                        reportError(write, rr_read, RaceType.WR);
                     }
                 }
             }
@@ -196,11 +174,11 @@ public abstract class SegmentEntryR {
         public String toString() {
             StringBuilder builder = new StringBuilder();
             builder.append("write: <");
-            builder.append(tid);
+            builder.append(Epoch.tid(write));
             builder.append("->");
-            builder.append(write);
+            builder.append(Epoch.clock(write));
             builder.append(">, reads: <");
-            builder.append(Arrays.toString(reads));
+            builder.append(Arrays.toString(Epoch.toClock(reads)));
             builder.append(">");
             return builder.toString();
         }
@@ -210,9 +188,6 @@ public abstract class SegmentEntryR {
             if (other instanceof WR_R) {
                 WR_R o = (WR_R) other;
                 if (this.write != o.write) {
-                    return false;
-                }
-                if (this.tid != o.tid) {
                     return false;
                 }
                 if (!Arrays.equals(this.reads, o.reads)) {
@@ -229,7 +204,8 @@ public abstract class SegmentEntryR {
 
         public int[] reads;
 
-        public RR_R (int epoch, int tid) {
+        public RR_R (int epoch) {
+            int tid = Epoch.tid(epoch);
             this.reads = new int[tid + 1];
             this.reads[tid] = epoch;
         }
@@ -260,7 +236,7 @@ public abstract class SegmentEntryR {
         public String toString() {
             StringBuilder builder = new StringBuilder();
             builder.append("reads: <");
-            builder.append(Arrays.toString(reads));
+            builder.append(Arrays.toString(Epoch.toClock(reads)));
             builder.append(">");
             return builder.toString();
         }

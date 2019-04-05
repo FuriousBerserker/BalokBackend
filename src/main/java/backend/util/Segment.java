@@ -40,7 +40,7 @@ public final class Segment implements Consumer<Segment> {
 //    }
 
     public static Segment make(boolean isWrite, int[] event, int tid) {
-        return new Segment(SegmentEntryL.make(isWrite, event), SegmentEntryR.make(isWrite, event[tid], tid));
+        return new Segment(SegmentEntryL.make(isWrite, event), SegmentEntryR.make(isWrite, event[tid]));
     }
 
     public static IntervalTree<Segment> makeInterval(Segment tracker, Interval range) {

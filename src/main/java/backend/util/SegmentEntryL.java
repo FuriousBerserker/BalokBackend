@@ -41,11 +41,11 @@ public abstract class SegmentEntryL {
         public String toString() {
             StringBuilder builder = new StringBuilder();
             builder.append("write: <");
-            builder.append(Arrays.toString(write));
+            builder.append(Arrays.toString(Epoch.toClock(write)));
             builder.append(">, reads: <");
             Iterator<int[]> iter = reads.iterator();
             while (iter.hasNext()) {
-                builder.append(Arrays.toString(iter.next()));
+                builder.append(Arrays.toString(Epoch.toClock(iter.next())));
                 if (iter.hasNext()) {
                     builder.append(", ");
                 }
@@ -111,7 +111,7 @@ public abstract class SegmentEntryL {
             builder.append("reads: <");
             Iterator<int[]> iter = reads.iterator();
             while (iter.hasNext()) {
-                builder.append(Arrays.toString(iter.next()));
+                builder.append(Arrays.toString(Epoch.toClock(iter.next())));
                 if (iter.hasNext()) {
                     builder.append(", ");
                 }
