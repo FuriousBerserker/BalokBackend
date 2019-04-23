@@ -19,13 +19,15 @@ plugins {
 version = "1.0-dev"
 group = "t.cog.balok"
 description = "A tiny balok backend to tackle dumped memory accesses"
-applicationDefaultJvmArgs = ["-Xms8g", "-Xmx8g", "-Xss1m", 
+applicationDefaultJvmArgs = ["-Xms4g", "-Xmx4g", "-Xss1m", 
 // debug options
 //"-XX:+PrintGCDetails", 
 //"-XX:+PrintGCApplicationStoppedTime", 
 //"-XX:+PrintGCApplicationConcurrentTime", 
 //"-XX:+PrintGCDateStamps",
-"-XX:+HeapDumpOnOutOfMemoryError",
+//"-XX:+HeapDumpOnOutOfMemoryError",
+//"-XX:HeapDumpPath=/tmp/heapdump.bin",
+"-XX:+HeapDumpOnOutOfMemoryError", 
 "-XX:HeapDumpPath=/tmp/heapdump.bin",
 ]
 
@@ -60,3 +62,18 @@ targetCompatibility = '1.8'
 
 // Define the main class for the application
 mainClassName = 'backend.App'
+
+task jarAllDeps(type: Jar) {
+    group "Balok"
+    description "Generates a JAR for ${project.name} with all JAR dependencies included."
+    archiveName "${project.name}-${version}-all-deps.jar"
+    dependsOn configurations.runtime
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    from { configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) } }
+    manifest { attributes 'Main-Class': mainClassName}
+    with jar
+    doLast {
+        println "Built: ${destinationDir}/${archiveName}"
+    }
+}
+

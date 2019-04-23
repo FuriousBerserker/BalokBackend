@@ -130,7 +130,7 @@ public class App {
                 accessNum += frame.get().length;
                 frame = input.getNextFrame();
             }
-            dbg.findSingleAccessLocation();
+            dbg.debug();
         } else if (line.hasOption(parallel.getOpt())) {
             // parallel data race detection mode
             int parallelism = Integer.parseInt(line.getOptionValue(parallel.getOpt()));
